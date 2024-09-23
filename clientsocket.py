@@ -1,13 +1,24 @@
-# clientsocket.py
-
 import socket
 
-HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 3030  # The port used by the server
+HOST = "127.0.0.1"  # Dirección IP del servidor
+PORT = 3030  # Puerto utilizado por el servidor
 
+# Función para solicitar datos de usuario
+def obtener_datos():
+    usuario = input("Ingrese su nombre de usuario: ")
+    contraseña = input("Ingrese su contraseña: ")
+    mensaje = input("Ingrese el mensaje de transferencia: ")
+    return f"{usuario}:{contraseña}:{mensaje}"
+
+# Crear el socket
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
-    s.sendall(b"Hello, world")
+    
+    # Obtener y enviar datos del usuario
+    datos = obtener_datos()
+    s.sendall(datos.encode('utf-8'))
+    
+    # Recibir la respuesta del servidor
     data = s.recv(1024)
 
-print(f"Received {data!r}")
+print(f"Recibido {data.decode('utf-8')}")
