@@ -3,17 +3,17 @@ import bcrypt
 import mysql.connector
 from mysql.connector import Error
 
-HOST = "127.0.0.1"  # Dirección IP estándar de loopback (localhost)
-PORT = 3030  # Puerto de escucha (puertos no privilegiados son > 1023)
+HOST = "127.0.0.1"
+PORT = 3030
 
 # Función para conectar con la base de datos MySQL
 def conectar_base_datos():
     try:
         conexion = mysql.connector.connect(
             host="localhost",
-            user="root",  # Cambia esto por tu usuario de MySQL
-            password="root",  # Cambia esto por tu contraseña de MySQL
-            database="users"  # Nombre de la base de datos
+            user="root",
+            password="root",
+            database="users"
         )
         if conexion.is_connected():
             return conexion
@@ -38,16 +38,33 @@ def verificar_credenciales(conexion, usuario, contraseña):
         print(f"Error durante la verificación de credenciales: {e}")
         return False
 
+# Función para verificar si el usuario ya existe en la base de datos
+def usuario_existe(conexion, usuario):
+    try:
+        cursor = conexion.cursor()
+        query = "SELECT 1 FROM usuarios WHERE nombre_usuario = %s"
+        cursor.execute(query, (usuario,))
+        resultado = cursor.fetchone()
+        return resultado is not None
+    except Error as e:
+        print(f"Error al verificar si el usuario existe: {e}")
+        return False
+
 # Función para registrar un nuevo usuario en la base de datos
 def registrar_usuario(conexion, usuario, contraseña):
     try:
+        if usuario_existe(conexion, usuario):
+            print(f"El usuario {usuario} ya está registrado.")
+            return False
         hashed = bcrypt.hashpw(contraseña.encode('utf-8'), bcrypt.gensalt())
         cursor = conexion.cursor()
         query = "INSERT INTO usuarios (nombre_usuario, contrasena) VALUES (%s, %s)"
         cursor.execute(query, (usuario, hashed.decode('utf-8')))
         conexion.commit()
+        return True
     except Error as e:
         print(f"Error durante el registro de usuario: {e}")
+        return False
 
 # Crear el socket del servidor
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -82,10 +99,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print(f"Mensaje de transferencia: {mensaje}")
                 conn.sendall("Autenticación exitosa. Transferencia recibida.")
             else:
-                # Registrar el usuario si no existe (esto es opcional)
-                registrar_usuario(conexion, usuario, contraseña)
-                print(f"Usuario {usuario} registrado.")
-                conn.sendall(b"Usuario registrado y transferencia recibida.")
+                # Verificar si el usuario ya está registrado antes de intentar registrarlo
+                if not usuario_existe(conexion, usuario):
+                    if registrar_usuario(conexion, usuario, contraseña):
+                        print(f"Usuario {usuario} registrado.")
+                        conn.sendall(b"Usuario registrado y transferencia recibida.")
+                    else:
+                        conn.sendall(b"Error al registrar el usuario.")
+                else:
+                    conn.sendall("El usuario ya está registrado. Intenta iniciar sesión.")
 
         # Cerrar la conexión a la base de datos
         if conexion.is_connected():
