@@ -22,8 +22,13 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.sendall(datos.encode('utf-8'))
     
     # Recibir la respuesta del servidor
-    data = s.recv(1024)
+    respuesta = s.recv(1024).decode('utf-8')
+    print(f"Respuesta del servidor: {respuesta}")
 
-
-print(f"Recibido {data.decode('utf-8')}")
-
+    if "Enviado con exito" in respuesta:  # Verifica si la autenticación fue exitosa
+        mensaje_transferencia = enviar_transferencia()
+        s.sendall(mensaje_transferencia.encode('utf-8'))
+        
+        # Recibir respuesta sobre la transferencia
+        respuesta_transferencia = s.recv(1024).decode('utf-8')
+        print(f"Respuesta del servidor sobre transferencia: {respuesta_transferencia}")

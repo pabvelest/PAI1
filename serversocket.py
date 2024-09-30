@@ -77,7 +77,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.listen()
     print("Servidor en espera de conexiones...")
 
-    # Aceptar conexiones
     conn, addr = s.accept()
     with conn:
         print(f"Conectado con {addr}")
@@ -96,23 +95,34 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             # Decodificar los datos recibidos
             datos_recibidos = data.decode('utf-8')
-            usuario, contraseña, mensaje = datos_recibidos.split(':')
+            try:
+                usuario, contraseña = datos_recibidos.split(':')
+            except ValueError:
+                conn.sendall(b"Error: Datos mal formateados.")
+                continue
 
             # Verificar si el usuario existe en la base de datos
-            if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion,usuario,contraseña):
+            if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion, usuario, contraseña):
                 # Verificar credenciales
-                print("Enviado!")
-                conn.sendall("Enviado con exito")
-            else:
+                print("Usuario autenticado!")
+                conn.sendall(b"Enviado con exito")
 
-                if(usuario_existe(conexion,usuario)==False):
+                # Esperar el mensaje de transferencia
+                mensaje_transferencia = conn.recv(1024).decode('utf-8')
+                print(f"Mensaje de transferencia recibido: {mensaje_transferencia}")
+                
+                # Aquí puedes realizar cualquier acción necesaria con el mensaje recibido
+                
+                conn.sendall(b"Mensaje de transferencia recibido con exito.")
+            else:
+                if not usuario_existe(conexion, usuario):
                     print(f"Usuario no encontrado: {usuario}")
                     conn.sendall(b"Error: Usuario no encontrado.")
-                    s.close()
+                    break
                 else:
                     print(f"Contraseña Incorrecta")
                     conn.sendall(b"Error: Contrasena incorrecta.")
-                    s.close()
+                    break
 
         # Cerrar la conexión a la base de datos
         if conexion.is_connected():
