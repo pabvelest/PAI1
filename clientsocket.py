@@ -7,8 +7,11 @@ PORT = 3030  # Puerto utilizado por el servidor
 def obtener_datos():
     usuario = input("Ingrese su nombre de usuario: ")
     contraseña = input("Ingrese su contraseña: ")
-    mensaje = input("Ingrese el mensaje de transferencia: ")
-    return f"{usuario}:{contraseña}:{mensaje}"
+    return f"{usuario}:{contraseña}"
+
+def enviar_transferencia():
+    mensaje = input("Ingrese el mensaje de transferencia: ")    
+    return f"{mensaje}"
 
 # Crear el socket
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -21,4 +24,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     # Recibir la respuesta del servidor
     data = s.recv(1024)
 
+
 print(f"Recibido {data.decode('utf-8')}")
+
