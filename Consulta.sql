@@ -6,3 +6,7 @@ CREATE TABLE usuarios (
     contrasena VARCHAR(255) NOT NULL
 );
 
+INSERT INTO usuarios(nombre_usuario, contrasena) VALUES
+(),
+(),
+();
