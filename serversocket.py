@@ -1,5 +1,4 @@
 import socket
-import bcrypt
 import mysql.connector
 import hashlib
 from mysql.connector import Error
@@ -22,22 +21,6 @@ def conectar_base_datos():
         print(f"Error al conectar a MySQL: {e}")
         return None
 
-# Función para verificar las credenciales
-def verificar_credenciales(conexion, usuario, contraseña):
-    try:
-        cursor = conexion.cursor()
-        query = "SELECT contrasena FROM usuarios WHERE nombre_usuario = %s"
-        cursor.execute(query, (usuario,))
-        resultado = cursor.fetchone()
-
-        if resultado:
-            stored_hash = resultado[0]  # Recuperar el hash de la base de datos
-            if bcrypt.checkpw(contraseña.encode('utf-8'), stored_hash.encode('utf-8')):
-                return True
-        return False
-    except Error as e:
-        print(f"Error durante la verificación de credenciales: {e}")
-        return False
 
 # Función para verificar si el usuario ya existe en la base de datos
 def usuario_existe(conexion, usuario):
