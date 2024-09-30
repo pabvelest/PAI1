@@ -4,7 +4,7 @@ import hashlib
 from mysql.connector import Error
 
 HOST = "127.0.0.1"
-PORT = 3000
+PORT = 3030
 
 # Función para conectar con la base de datos MySQL
 def conectar_base_datos():
@@ -37,35 +37,27 @@ def usuario_existe(conexion, usuario):
 
 # Función para generar el hash SHA-3 de una contraseña
 def hashear_contrasena_sha3(contrasena):
-    # Convertir la contraseña a formato bytes
     contrasena_bytes = contrasena.encode('utf-8')
-    
-    # Crear el hash con SHA3-256
     hash_sha3 = hashlib.sha3_512(contrasena_bytes).hexdigest()
-    
     return hash_sha3
 
 def verificar_contrasena_sin_hash(conexion, usuario, contrasena_ingresada):
     try:
         cursor = conexion.cursor()
-        # Buscar la contraseña almacenada para el usuario
         query = "SELECT contrasena FROM usuarios WHERE nombre_usuario = %s"
         cursor.execute(query, (usuario,))
         resultado = cursor.fetchone()
 
         if resultado:
             contrasena_almacenada = resultado[0] 
-            # Comparar la contraseña ingresada con la almacenada
-            contrasena_ingresada=hashear_contrasena_sha3(contrasena_ingresada)
-            print(contrasena_ingresada)
-            #print(contrasena_almacenada)
+            contrasena_ingresada = hashear_contrasena_sha3(contrasena_ingresada)
             if contrasena_ingresada == contrasena_almacenada:
                 return True
             else:
                 print("Error: Contraseña incorrecta.")
                 return False
         else:
-            print("Error: Contraseña incorrecta.")
+            print("Error: Usuario no encontrado.")
             return False
     except Error as e:
         print(f"Error durante la verificación de la contraseña: {e}")
