@@ -1,7 +1,7 @@
 import socket
 
 HOST = "127.0.0.1"  # Dirección IP del servidor
-PORT = 3030  # Puerto utilizado por el servidor
+PORT = 3000  # Puerto utilizado por el servidor
 
 # Función para solicitar datos de usuario
 def obtener_datos():
@@ -23,6 +23,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     
     # Recibir la respuesta del servidor
     data = s.recv(1024)
+    
+    #Enviar transferencia:
+    mensaje = enviar_transferencia()
+    s.sendall(mensaje.encode('utf-8'))
 
 
 print(f"Recibido {data.decode('utf-8')}")

@@ -4,7 +4,7 @@ import hashlib
 from mysql.connector import Error
 
 HOST = "127.0.0.1"
-PORT = 3030
+PORT = 3000
 
 # Función para conectar con la base de datos MySQL
 def conectar_base_datos():
@@ -96,7 +96,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             # Decodificar los datos recibidos
             datos_recibidos = data.decode('utf-8')
-            usuario, contraseña, mensaje = datos_recibidos.split(':')
+            usuario, contraseña = datos_recibidos.split(':')
 
             # Verificar si el usuario existe en la base de datos
             if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion,usuario,contraseña):

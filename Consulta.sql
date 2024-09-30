@@ -5,3 +5,4 @@ CREATE TABLE usuarios (
     nombre_usuario VARCHAR(50) NOT NULL, 
     contrasena VARCHAR(255) NOT NULL
 );
+
