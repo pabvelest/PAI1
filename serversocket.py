@@ -108,9 +108,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 if(usuario_existe(conexion,usuario)==False):
                     print(f"Usuario no encontrado: {usuario}")
                     conn.sendall(b"Error: Usuario no encontrado.")
+                    s.close()
                 else:
                     print(f"Contraseña Incorrecta")
                     conn.sendall(b"Error: Contrasena incorrecta.")
+                    s.close()
 
         # Cerrar la conexión a la base de datos
         if conexion.is_connected():
