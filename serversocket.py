@@ -1,10 +1,13 @@
 import socket
 import mysql.connector
 import hashlib
+import hmac
+import secrets
 from mysql.connector import Error
 
 HOST = "127.0.0.1"
 PORT = 3030
+CLAVE_SECRETA = b'supersecretkey'  # Clave secreta para HMAC (debería almacenarse de forma segura)
 
 # Función para conectar con la base de datos MySQL
 def conectar_base_datos():
@@ -21,7 +24,6 @@ def conectar_base_datos():
         print(f"Error al conectar a MySQL: {e}")
         return None
 
-
 # Función para verificar si el usuario ya existe en la base de datos
 def usuario_existe(conexion, usuario):
     try:
@@ -33,7 +35,6 @@ def usuario_existe(conexion, usuario):
     except Error as e:
         print(f"Error al verificar si el usuario existe: {e}")
         return False
-    
 
 # Función para generar el hash SHA-3 de una contraseña
 def hashear_contrasena_sha3(contrasena):
@@ -41,6 +42,7 @@ def hashear_contrasena_sha3(contrasena):
     hash_sha3 = hashlib.sha3_512(contrasena_bytes).hexdigest()
     return hash_sha3
 
+# Función para verificar la contraseña
 def verificar_contrasena_sin_hash(conexion, usuario, contrasena_ingresada):
     try:
         cursor = conexion.cursor()
@@ -49,19 +51,21 @@ def verificar_contrasena_sin_hash(conexion, usuario, contrasena_ingresada):
         resultado = cursor.fetchone()
 
         if resultado:
-            contrasena_almacenada = resultado[0] 
+            contrasena_almacenada = resultado[0]
             contrasena_ingresada = hashear_contrasena_sha3(contrasena_ingresada)
-            if contrasena_ingresada == contrasena_almacenada:
-                return True
-            else:
-                print("Error: Contraseña incorrecta.")
-                return False
+            return contrasena_ingresada == contrasena_almacenada
         else:
             print("Error: Usuario no encontrado.")
             return False
     except Error as e:
         print(f"Error durante la verificación de la contraseña: {e}")
-        return False    
+        return False
+
+# Verificar HMAC (MAC)
+def verificar_mac(mensaje, nonce, mac_cliente):
+    mensaje_con_nonce = mensaje + nonce
+    mac_servidor = hmac.new(CLAVE_SECRETA, mensaje_con_nonce.encode('utf-8'), hashlib.sha512).hexdigest()
+    return hmac.compare_digest(mac_servidor, mac_cliente)
 
 # Crear el socket del servidor
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -72,49 +76,51 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     conn, addr = s.accept()
     with conn:
         print(f"Conectado con {addr}")
-        
+
         # Conectar a la base de datos
         conexion = conectar_base_datos()
         if not conexion:
             conn.sendall(b"Error al conectar con la base de datos")
             conn.close()
-        
+
         while True:
             # Recibir datos del cliente
             data = conn.recv(1024)
             if not data:
                 break
 
-            # Decodificar los datos recibidos
-            datos_recibidos = data.decode('utf-8')
-            try:
-                usuario, contraseña = datos_recibidos.split(':')
-            except ValueError:
+            # Decodificar los datos recibidos (usuario, contraseña, nonce, mac)
+            datos_recibidos = data.decode('utf-8').split(':')
+            if len(datos_recibidos) != 4:
                 conn.sendall(b"Error: Datos mal formateados.")
                 continue
 
-            # Verificar si el usuario existe en la base de datos
-            if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion, usuario, contraseña):
-                # Verificar credenciales
-                print("Usuario autenticado!")
-                conn.sendall(b"Enviado con exito")
+            usuario, contraseña, nonce, mac_cliente = datos_recibidos
 
-                # Esperar el mensaje de transferencia
-                mensaje_transferencia = conn.recv(1024).decode('utf-8')
-                print(f"Mensaje de transferencia recibido: {mensaje_transferencia}")
-                
-                # Aquí puedes realizar cualquier acción necesaria con el mensaje recibido
-                
-                conn.sendall(b"Mensaje de transferencia recibido con exito.")
-            else:
-                if not usuario_existe(conexion, usuario):
-                    print(f"Usuario no encontrado: {usuario}")
-                    conn.sendall(b"Error: Usuario no encontrado.")
-                    break
+            # Mostrar el Nonce y el MAC recibidos
+            print(f"Nonce recibido: {nonce}")
+            print(f"MAC recibido (HMAC): {mac_cliente}")
+
+            # Verificar si el usuario existe y la contraseña es correcta
+            if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion, usuario, contraseña):
+                mensaje_a_verificar = f"{usuario}:{contraseña}"
+
+                if verificar_mac(mensaje_a_verificar, nonce, mac_cliente):
+                    print("Usuario autenticado, MAC verificado!")
+                    conn.sendall(b"Enviado con exito")
+
+                    # Esperar el mensaje de transferencia
+                    mensaje_transferencia = conn.recv(1024).decode('utf-8')
+                    print(f"Mensaje de transferencia recibido: {mensaje_transferencia}")
+                    
+                    conn.sendall(b"Mensaje de transferencia recibido con exito.")
                 else:
-                    print(f"Contraseña Incorrecta")
-                    conn.sendall(b"Error: Contrasena incorrecta.")
+                    print("Error: MAC inválido.")
+                    conn.sendall(b"Error: MAC invalido.")
                     break
+            else:
+                conn.sendall(b"Error: Usuario o contrasena incorrectos.")
+                break
 
         # Cerrar la conexión a la base de datos
         if conexion.is_connected():
