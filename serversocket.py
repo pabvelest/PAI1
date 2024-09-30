@@ -1,6 +1,7 @@
 import socket
 import bcrypt
 import mysql.connector
+import hashlib
 from mysql.connector import Error
 
 HOST = "127.0.0.1"
@@ -50,6 +51,17 @@ def usuario_existe(conexion, usuario):
         print(f"Error al verificar si el usuario existe: {e}")
         return False
     
+
+# Función para generar el hash SHA-3 de una contraseña
+def hashear_contrasena_sha3(contrasena):
+    # Convertir la contraseña a formato bytes
+    contrasena_bytes = contrasena.encode('utf-8')
+    
+    # Crear el hash con SHA3-256
+    hash_sha3 = hashlib.sha3_512(contrasena_bytes).hexdigest()
+    
+    return hash_sha3
+
 def verificar_contrasena_sin_hash(conexion, usuario, contrasena_ingresada):
     try:
         cursor = conexion.cursor()
@@ -59,8 +71,11 @@ def verificar_contrasena_sin_hash(conexion, usuario, contrasena_ingresada):
         resultado = cursor.fetchone()
 
         if resultado:
-            contrasena_almacenada = resultado[0]  # Contraseña en texto plano almacenada
+            contrasena_almacenada = resultado[0] 
             # Comparar la contraseña ingresada con la almacenada
+            contrasena_ingresada=hashear_contrasena_sha3(contrasena_ingresada)
+            print(contrasena_ingresada)
+            #print(contrasena_almacenada)
             if contrasena_ingresada == contrasena_almacenada:
                 return True
             else:
@@ -103,13 +118,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             # Verificar si el usuario existe en la base de datos
             if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion,usuario,contraseña):
                 # Verificar credenciales
-                if verificar_credenciales(conexion, usuario, contraseña):
-                    print(f"Usuario autenticado: {usuario}")
-                    print(f"Mensaje de transferencia: {mensaje}")
-                    conn.sendall("Autenticación exitosa. Transferencia recibida.")
-                else:
-                    print(f"Contraseña incorrecta para el usuario: {usuario}")
-                    conn.sendall("Error: Contraseña incorrecta. Intenta nuevamente.")
+                print("Enviado!")
+                conn.sendall("Enviado con exito")
             else:
 
                 if(usuario_existe(conexion,usuario)==False):
