@@ -13,6 +13,21 @@ def enviar_transferencia():
     mensaje = input("Ingrese el mensaje de transferencia: ")    
     return f"{mensaje}"
 
+import hmac
+import hashlib
+
+def generar_hmac_sha3(mensaje, clave):
+    # Convertir el mensaje y la clave en bytes
+    mensaje_bytes = mensaje.encode('utf-8')
+    clave_bytes = clave.encode('utf-8')
+    
+    # Crear el objeto HMAC utilizando SHA3-256
+    hmac_obj = hmac.new(clave_bytes, mensaje_bytes, hashlib.sha3_256)
+    
+    # Retornar el HMAC en formato hexadecimal
+    return hmac_obj.hexdigest()
+
+
 # Crear el socket
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
