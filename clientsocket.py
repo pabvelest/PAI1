@@ -24,22 +24,9 @@ def obtener_datos():
 
 # Función para enviar transferencia
 def enviar_transferencia():
-    mensaje = input("Ingrese el mensaje de transferencia: ")    
-    return f"{mensaje}"
-
-import hmac
-import hashlib
-
-def generar_hmac_sha3(mensaje, clave):
-    # Convertir el mensaje y la clave en bytes
-    mensaje_bytes = mensaje.encode('utf-8')
-    clave_bytes = clave.encode('utf-8')
-    
-    # Crear el objeto HMAC utilizando SHA3-256
-    hmac_obj = hmac.new(clave_bytes, mensaje_bytes, hashlib.sha3_256)
-    
-    # Retornar el HMAC en formato hexadecimal
-    return hmac_obj.hexdigest()
+    destino = input("Ingrese el usuario destino: ")  
+    cantidad = input("Ingrese la cantidad en euros: ")   
+    return f"Enviar {cantidad} euros a {destino}."
 
 
 # Crear el socket
@@ -48,16 +35,13 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     
     # Obtener y enviar datos del usuario
     datos = obtener_datos()
-    nonce = generar_nonce()
-    mac_cliente = crear_mac(datos, nonce)
-
+    
     # Mostrar por pantalla el MAC, el Nonce y los datos
-    print(f"Datos: {datos}")
-    print(f"Nonce generado: {nonce}")
-    print(f"MAC generado (HMAC): {mac_cliente}")
+    #print(f"Datos: {datos}")
+
     
     # Enviar usuario, contraseña, nonce y mac al servidor
-    s.sendall(f"{datos}:{nonce}:{mac_cliente}".encode('utf-8'))
+    s.sendall(f"{datos}".encode('utf-8'))
     
     # Recibir la respuesta del servidor
     respuesta = s.recv(1024).decode('utf-8')
@@ -66,8 +50,14 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     if "Enviado con exito" in respuesta:
         # Enviar el mensaje de transferencia
         mensaje_transferencia = enviar_transferencia()
-        s.sendall(mensaje_transferencia.encode('utf-8'))
+        print(mensaje_transferencia)
+        nonce = generar_nonce()
+        mac_cliente = crear_mac(mensaje_transferencia, nonce)
+        print(f"Nonce generado: {nonce}")
+        print(f"MAC generado (HMAC): {mac_cliente}")
+        s.sendall(f"{mensaje_transferencia}:{mac_cliente}:{nonce}".encode('utf-8'))
+        # Recibir la aceptacion del servidor de la transferencia
+        aceptacion_transferencia = s.recv(1024).decode('utf-8')
+        print(f"Respuesta del servidor sobre la transferencia: {aceptacion_transferencia}")
         
-        # Recibir respuesta sobre la transferencia
-        respuesta_transferencia = s.recv(1024).decode('utf-8')
-        print(f"Respuesta del servidor sobre transferencia: {respuesta_transferencia}")
+  

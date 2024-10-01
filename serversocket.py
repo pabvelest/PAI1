@@ -89,31 +89,39 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if not data:
                 break
 
-            # Decodificar los datos recibidos (usuario, contraseña, nonce, mac)
+            # Decodificar los datos recibidos (usuario, contraseña)
             datos_recibidos = data.decode('utf-8').split(':')
-            if len(datos_recibidos) != 4:
+            if len(datos_recibidos) != 2:
                 conn.sendall(b"Error: Datos mal formateados.")
                 continue
 
-            usuario, contraseña, nonce, mac_cliente = datos_recibidos
+            usuario, contraseña = datos_recibidos
 
             # Mostrar el Nonce y el MAC recibidos
-            print(f"Nonce recibido: {nonce}")
-            print(f"MAC recibido (HMAC): {mac_cliente}")
 
             # Verificar si el usuario existe y la contraseña es correcta
             if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion, usuario, contraseña):
                 mensaje_a_verificar = f"{usuario}:{contraseña}"
-
-                if verificar_mac(mensaje_a_verificar, nonce, mac_cliente):
-                    print("Usuario autenticado, MAC verificado!")
-                    conn.sendall(b"Enviado con exito")
-
-                    # Esperar el mensaje de transferencia
-                    mensaje_transferencia = conn.recv(1024).decode('utf-8')
-                    print(f"Mensaje de transferencia recibido: {mensaje_transferencia}")
-                    
-                    conn.sendall(b"Mensaje de transferencia recibido con exito.")
+                print("Usuario autenticado")
+                conn.sendall(b"Enviado con exito")
+                
+                # Esperar el mensaje de transferencia
+                mensaje_transferencia = conn.recv(1024)
+                # Decodificar la transferencia (mensaje, mac_cliente, nonce)
+                transferncia_recibida = mensaje_transferencia.decode('utf-8').split(':')
+                
+                if len(transferncia_recibida) != 3:
+                    conn.sendall(b"Error: Transferencia mal formateados.")
+                    continue
+                
+                mensaje, mac_cliente, nonce = transferncia_recibida
+                
+                print(f"Nonce recibido: {nonce}")
+                print(f"MAC recibido (HMAC): {mac_cliente}")
+                
+                if verificar_mac(mensaje, nonce, mac_cliente):
+                    print("Transferencia Validada!")
+                    conn.sendall(b"Transferencia Validada!")
                 else:
                     print("Error: MAC inválido.")
                     conn.sendall(b"Error: MAC invalido.")
