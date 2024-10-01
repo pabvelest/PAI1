@@ -6,7 +6,9 @@ CREATE TABLE usuarios (
     contrasena VARCHAR(255) NOT NULL
 );
 
-INSERT INTO usuarios(nombre_usuario, contrasena) VALUES
-(),
-(),
-();
+INSERT INTO usuarios (id, nombre_usuario, contrasena)
+VALUES 
+(2, 'user2', '35c77bdeb75ca8abadf6f9b7033f62ed85d1aac10bddd63baae6756c89bce952b822113f91da5697d293b94d6934330400c853dc16a024e8ebf282fd449e5218'),
+(3, 'user3', 'b914b6a92c2716123781ee95342c4baf14947240727db78b9bd340eff4a0af076c6adf07908eec33b7744d1d149a61e1acdf021d8e59264c1502ae5d00b749b6'),
+(1, 'user1', '61d634ef0cc4cb5a0fc3ed77fe4466104e8b40c1405e0ebde80d014da76e8424648098dbbed27f439ff6cd5e7df5d3108540cc475279254d463afc2f653bc2a4'),
+(4, 'user4', '4ad1199d0b1bb88e09b68adb55d98af2379c26ff7b96abb0de3fc0191c1bcd57f501a6948084623e0978d2975c244df62ee21f843ca940af0ca365349f3c9fb1');
