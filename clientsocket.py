@@ -1,4 +1,5 @@
 import socket
+import os
 import hmac
 import hashlib
 import secrets
@@ -6,10 +7,22 @@ import secrets
 HOST = "127.0.0.1"  # Dirección IP del servidor
 PORT = 3030  # Puerto utilizado por el servidor
 CLAVE_SECRETA = b'supersecretkey'  # Debe ser la misma clave que en el servidor
+NONCE_FILE = "nonce.txt"
 
 # Función para generar un Nonce aleatorio
 def generar_nonce():
-    return secrets.token_hex(16)
+    nonce = secrets.token_hex(16)
+    while(nonce in leer_nonces_usados()):
+        nonce = secrets.token_hex(16)
+    return nonce
+
+# Leer los nonces usados desde el archivo
+def leer_nonces_usados():
+    if os.path.exists(NONCE_FILE):
+        with open(NONCE_FILE, 'r') as file:
+            nonces = file.read().splitlines()
+            return set(nonces)
+    return set()
 
 # Función para crear HMAC con SHA-512
 def crear_mac(mensaje, nonce):
@@ -24,10 +37,10 @@ def obtener_datos():
 
 # Función para enviar transferencia
 def enviar_transferencia():
-    destino = input("Ingrese el usuario destino: ")  
+    origen = input("Ingrese el IBAN del origen: ")  
+    destino = input("Ingrese el IBAN del destino: ")  
     cantidad = input("Ingrese la cantidad en euros: ")   
-    return f"Enviar {cantidad} euros a {destino}."
-
+    return f"Enviar {cantidad} euros desde {origen} a {destino}."
 
 # Crear el socket
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -36,11 +49,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     # Obtener y enviar datos del usuario
     datos = obtener_datos()
     
-    # Mostrar por pantalla el MAC, el Nonce y los datos
-    #print(f"Datos: {datos}")
-
-    
-    # Enviar usuario, contraseña, nonce y mac al servidor
+    # Enviar usuario, contraseña al servidor
     s.sendall(f"{datos}".encode('utf-8'))
     
     # Recibir la respuesta del servidor
@@ -49,10 +58,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     if "Enviado con exito" in respuesta:
         # Enviar el mensaje de transferencia
-        mensaje_transferencia = enviar_transferencia()
-        print(mensaje_transferencia)
-        nonce = generar_nonce()
-        mac_cliente = crear_mac(mensaje_transferencia, nonce)
+        mensaje_transferencia = enviar_transferencia()  #Mensaje
+        nonce = generar_nonce() #NONCE
+        mac_cliente = crear_mac(mensaje_transferencia, nonce)   #MAC
+        print(f"Mensaje de la transferencia: {mensaje_transferencia}")
         print(f"Nonce generado: {nonce}")
         print(f"MAC generado (HMAC): {mac_cliente}")
         s.sendall(f"{mensaje_transferencia}:{mac_cliente}:{nonce}".encode('utf-8'))

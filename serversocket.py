@@ -2,12 +2,14 @@ import socket
 import mysql.connector
 import hashlib
 import hmac
+import os
 import secrets
 from mysql.connector import Error
 
 HOST = "127.0.0.1"
 PORT = 3030
 CLAVE_SECRETA = b'supersecretkey'  # Clave secreta para HMAC (debería almacenarse de forma segura)
+NONCE_FILE = "nonce.txt"
 
 # Función para conectar con la base de datos MySQL
 def conectar_base_datos():
@@ -67,6 +69,26 @@ def verificar_mac(mensaje, nonce, mac_cliente):
     mac_servidor = hmac.new(CLAVE_SECRETA, mensaje_con_nonce.encode('utf-8'), hashlib.sha512).hexdigest()
     return hmac.compare_digest(mac_servidor, mac_cliente)
 
+# Verificar si el nonce ha sido usado:
+def verificar_nonce_usado(nonce, nonces_usados):
+    if nonce in nonces_usados:
+        return True
+    else:
+        return False
+
+# Leer los nonces usados desde el archivo
+def leer_nonces_usados():
+    if os.path.exists(NONCE_FILE):
+        with open(NONCE_FILE, 'r') as file:
+            nonces = file.read().splitlines()
+            return set(nonces)
+    return set()
+
+# Guardar un nonce en el archivo
+def guardar_nonce(nonce):
+    with open(NONCE_FILE, 'a') as file:
+        file.write(nonce + "\n")
+
 # Crear el socket del servidor
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, PORT))
@@ -97,19 +119,16 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             usuario, contraseña = datos_recibidos
 
-            # Mostrar el Nonce y el MAC recibidos
-
             # Verificar si el usuario existe y la contraseña es correcta
             if usuario_existe(conexion, usuario) and verificar_contrasena_sin_hash(conexion, usuario, contraseña):
                 mensaje_a_verificar = f"{usuario}:{contraseña}"
                 print("Usuario autenticado")
                 conn.sendall(b"Enviado con exito")
-                
                 # Esperar el mensaje de transferencia
                 mensaje_transferencia = conn.recv(1024)
                 # Decodificar la transferencia (mensaje, mac_cliente, nonce)
                 transferncia_recibida = mensaje_transferencia.decode('utf-8').split(':')
-                
+                #  Comprobamos errores de transferencia
                 if len(transferncia_recibida) != 3:
                     conn.sendall(b"Error: Transferencia mal formateados.")
                     continue
@@ -119,12 +138,17 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print(f"Nonce recibido: {nonce}")
                 print(f"MAC recibido (HMAC): {mac_cliente}")
                 
-                if verificar_mac(mensaje, nonce, mac_cliente):
+                if verificar_mac(mensaje, nonce, mac_cliente) and not verificar_nonce_usado(nonce, leer_nonces_usados()):
                     print("Transferencia Validada!")
                     conn.sendall(b"Transferencia Validada!")
+                    guardar_nonce(nonce)
                 else:
-                    print("Error: MAC inválido.")
-                    conn.sendall(b"Error: MAC invalido.")
+                    if(verificar_nonce_usado(nonce, leer_nonces_usados())):
+                        print("Error: NONCE ya usado.")
+                        conn.sendall(b"Error: NONCE ya usado.")
+                    else:
+                        print("Error: MAC inválido.")
+                        conn.sendall(b"Error: MAC invalido.")
                     break
             else:
                 conn.sendall(b"Error: Usuario o contrasena incorrectos.")
