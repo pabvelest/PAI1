@@ -102,9 +102,11 @@ def iban_valido(origen, destino):
         # El primer y segundo dígito deben ser letras:
         try:
             int(origen[0:2])
-            int(destino[0:2])
         except:
-            return True
+            try:
+                int(destino[0:2])
+            except:
+                return True
         print("Fallo letras")
         return False
     else:

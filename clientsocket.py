@@ -62,10 +62,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         # Mensaje:
         mensaje_transferencia = enviar_transferencia()  
         # Nonce:
-        nonce = generar_nonce() 
+        nonce = "NONCEYAUSADO"
+        #nonce = generar_nonce() 
         # Mac:
         mac_cliente = crear_mac(mensaje_transferencia.split(":")[0], nonce)   
         s.sendall(f"{mensaje_transferencia}:{mac_cliente}:{nonce}".encode('utf-8'))
+        print("Transferencia: ",mensaje_transferencia.split(":")[0])
         # Recibir la aceptacion del servidor de la transferencia
         aceptacion_transferencia = s.recv(1024).decode('utf-8')
         print(f"Respuesta del servidor sobre la transferencia: {aceptacion_transferencia}")
@@ -73,10 +75,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         while(aceptacion_transferencia == "Error: Iban invalido." or aceptacion_transferencia == "Error: Cantidad invalida."):
             mensaje_transferencia = enviar_transferencia()
             s.sendall(f"{mensaje_transferencia}:{mac_cliente}:{nonce}".encode('utf-8'))
+            print("Transferencia: ",mensaje_transferencia.split(":")[0])
             aceptacion_transferencia = s.recv(1024).decode('utf-8')
             print(f"Respuesta del servidor sobre la transferencia: {aceptacion_transferencia}")
         # Transferencia Validada:
-        print("Transferencia: ",mensaje_transferencia.split(":")[0])
+        
             
         
   
