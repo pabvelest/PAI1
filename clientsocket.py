@@ -7,7 +7,7 @@ import secrets
 HOST = "127.0.0.1"  # Dirección IP del servidor
 PORT = 3030  # Puerto utilizado por el servidor
 CLAVE_SECRETA = b'supersecretkey'  # Debe ser la misma clave que en el servidor
-NONCE_FILE = "nonce.txt"
+NONCE_FILE = "nonce.txt" 
 
 # Función para generar un Nonce aleatorio
 def generar_nonce():
@@ -40,7 +40,8 @@ def enviar_transferencia():
     origen = input("Ingrese el IBAN del origen: ")  
     destino = input("Ingrese el IBAN del destino: ")  
     cantidad = input("Ingrese la cantidad en euros: ")   
-    return f"Enviar {cantidad} euros desde {origen} a {destino}."
+    mensaje = f"Enviar {cantidad} euros desde {origen} a {destino}"
+    return f"{mensaje}:{origen}:{destino}:{cantidad}"
 
 # Crear el socket
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -58,15 +59,24 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     if "Enviado con exito" in respuesta:
         # Enviar el mensaje de transferencia
-        mensaje_transferencia = enviar_transferencia()  #Mensaje
-        nonce = generar_nonce() #NONCE
-        mac_cliente = crear_mac(mensaje_transferencia, nonce)   #MAC
-        print(f"Mensaje de la transferencia: {mensaje_transferencia}")
-        print(f"Nonce generado: {nonce}")
-        print(f"MAC generado (HMAC): {mac_cliente}")
+        # Mensaje:
+        mensaje_transferencia = enviar_transferencia()  
+        # Nonce:
+        nonce = generar_nonce() 
+        # Mac:
+        mac_cliente = crear_mac(mensaje_transferencia.split(":")[0], nonce)   
         s.sendall(f"{mensaje_transferencia}:{mac_cliente}:{nonce}".encode('utf-8'))
         # Recibir la aceptacion del servidor de la transferencia
         aceptacion_transferencia = s.recv(1024).decode('utf-8')
         print(f"Respuesta del servidor sobre la transferencia: {aceptacion_transferencia}")
+        # Correcion de errores en el iban o en la cantidad:
+        while(aceptacion_transferencia == "Error: Iban invalido." or aceptacion_transferencia == "Error: Cantidad invalida."):
+            mensaje_transferencia = enviar_transferencia()
+            s.sendall(f"{mensaje_transferencia}:{mac_cliente}:{nonce}".encode('utf-8'))
+            aceptacion_transferencia = s.recv(1024).decode('utf-8')
+            print(f"Respuesta del servidor sobre la transferencia: {aceptacion_transferencia}")
+        # Transferencia Validada:
+        print("Transferencia: ",mensaje_transferencia.split(":")[0])
+            
         
   

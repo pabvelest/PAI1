@@ -89,6 +89,24 @@ def guardar_nonce(nonce):
     with open(NONCE_FILE, 'a') as file:
         file.write(nonce + "\n")
 
+# Comprobar si los IBAN son validos:
+def iban_valido(origen, destino):
+    if(len(origen) == 24 and len(destino) == 24 and origen != destino):
+        return True
+    else:
+        return False
+
+# Comprobar si la cantidad es valida:
+def cantidad_valida(cantidad):
+    try:
+        cantidad = int(cantidad)
+    except:
+        return False   
+    if cantidad <0:
+        return False
+    else:
+        return True
+
 # Crear el socket del servidor
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, PORT))
@@ -129,26 +147,48 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 # Decodificar la transferencia (mensaje, mac_cliente, nonce)
                 transferncia_recibida = mensaje_transferencia.decode('utf-8').split(':')
                 #  Comprobamos errores de transferencia
-                if len(transferncia_recibida) != 3:
+                if len(transferncia_recibida) != 6:
                     conn.sendall(b"Error: Transferencia mal formateados.")
                     continue
+                                
+                mensaje, origen, destino, cantidad, mac_cliente, nonce = transferncia_recibida
                 
-                mensaje, mac_cliente, nonce = transferncia_recibida
-                
-                print(f"Nonce recibido: {nonce}")
-                print(f"MAC recibido (HMAC): {mac_cliente}")
-                
-                if verificar_mac(mensaje, nonce, mac_cliente) and not verificar_nonce_usado(nonce, leer_nonces_usados()):
+                # Verificacion de errores en el mensaje (MAC, NONCE, IBAN, CANTIDAD)           
+                # Transferencia Validada:     
+                if verificar_mac(mensaje, nonce, mac_cliente) and iban_valido(origen, destino) and (not (verificar_nonce_usado(nonce, leer_nonces_usados()))) and cantidad_valida(cantidad):
                     print("Transferencia Validada!")
                     conn.sendall(b"Transferencia Validada!")
                     guardar_nonce(nonce)
+                # Errores en la transferencia:
                 else:
-                    if(verificar_nonce_usado(nonce, leer_nonces_usados())):
-                        print("Error: NONCE ya usado.")
-                        conn.sendall(b"Error: NONCE ya usado.")
-                    else:
+                    # Error en la MAC(Cierre de la conexion): 
+                    if(not verificar_mac(mensaje, nonce, mac_cliente)):
                         print("Error: MAC inválido.")
                         conn.sendall(b"Error: MAC invalido.")
+                    # Error en el NONCE(Cierre de la conexion): 
+                    elif(verificar_nonce_usado(nonce, leer_nonces_usados())):
+                        print("Error: NONCE ya usado.")
+                        conn.sendall(b"Error: NONCE ya usado.")
+                    # Errores en el iban o en la cantidad (Solicitamos nueva entrada de datos):
+                    elif(not iban_valido(origen, destino) or not cantidad_valida(cantidad)):
+                        # Bucle error en iban:
+                        while(not iban_valido(origen, destino)):
+                            print("Error: Iban invalido.")
+                            conn.sendall(b"Error: Iban invalido.")
+                            mensaje_transferencia = conn.recv(1024)
+                            transferncia_recibida = mensaje_transferencia.decode('utf-8').split(':')
+                            mensaje, origen, destino, cantidad, mac_cliente, nonce = transferncia_recibida
+                        # Bucle error en la cantidad:
+                        while(not cantidad_valida(cantidad)):
+                            print("Error: Cantidad inválida.")
+                            conn.sendall(b"Error: Cantidad invalida.")
+                            mensaje_transferencia = conn.recv(1024)
+                            transferncia_recibida = mensaje_transferencia.decode('utf-8').split(':')
+                            mensaje, origen, destino, cantidad, mac_cliente, nonce = transferncia_recibida
+                        # Errores corregidos (Transferencia Validada):
+                        print("Transferencia Validada!")
+                        conn.sendall(b"Transferencia Validada!")
+                        guardar_nonce(nonce)
                     break
             else:
                 conn.sendall(b"Error: Usuario o contrasena incorrectos.")
