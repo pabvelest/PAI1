@@ -92,7 +92,21 @@ def guardar_nonce(nonce):
 # Comprobar si los IBAN son validos:
 def iban_valido(origen, destino):
     if(len(origen) == 24 and len(destino) == 24 and origen != destino):
-        return True
+        # Desde el tercer al último digito deben ser numeros enteros
+        try:
+            int(origen[2:])
+            int(destino[2:])
+        except:
+            print("Fallo numeros")
+            return False
+        # El primer y segundo dígito deben ser letras:
+        try:
+            int(origen[0:2])
+            int(destino[0:2])
+        except:
+            return True
+        print("Fallo letras")
+        return False
     else:
         return False
 
