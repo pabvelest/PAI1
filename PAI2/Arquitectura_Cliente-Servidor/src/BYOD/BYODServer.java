@@ -1,4 +1,5 @@
 package BYOD;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -14,53 +15,70 @@ import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
 public class BYODServer {
-	
-	
-	/**
-	 * @param args
-	 * @throws IOException
-	 * @throws InterruptedException
-	 */
-	private static final HashMap<String, String> userDatabase = new HashMap<>();
+
+    private static final HashMap<String, String> userDatabase = new HashMap<>();
+    private static final int MAX_CLIENTS = 300;  // Número máximo de clientes permitidos
+    private static int clientCount = 0;  // Contador de clientes
 
     public static void main(String[] args) throws IOException, InterruptedException {
         // Cargar usuarios y hashes de contraseñas desde el archivo CSV
-        loadUserDatabase("C:\\Users\\Pablo\\Desktop\\UNIVERSITY\\CUARTO\\FIRST SEMESTER\\SSII\\Lab\\PAI\\PAI 2\\PAI 2\\PAI1\\PAI2\\Users.csv");
+        loadUserDatabase("C:\\Users\\guill\\Desktop\\Users.csv");
 
         try {        
             SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
-            //SSLServerSocket serverSocket = (SSLServerSocket) factory.createServerSocket(3343);
-            SSLServerSocket serverSocket = (SSLServerSocket) factory.createServerSocket(3343, 0, InetAddress.getByName("0.0.0.0"));
-            
-            System.err.println("Waiting for connection...");
-            SSLSocket socket = (SSLSocket) serverSocket.accept();
+            SSLServerSocket serverSocket = (SSLServerSocket) factory.createServerSocket(3343, 1000, InetAddress.getByName("0.0.0.0"));
 
-            BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+            while (true) {  
+                synchronized (BYODServer.class) {
+                    if (clientCount >= MAX_CLIENTS) {
+                        System.err.println("Capacidad máxima de 300 clientes alcanzada. No se permiten más conexiones.");
+                        // Esperar un tiempo o realizar alguna acción específica cuando se alcanza el límite
+                        Thread.sleep(1000);
+                        continue;  // Saltar a la siguiente iteración del bucle sin aceptar conexiones
+                    }
+                }
 
-            // Leer usuario y contraseña enviados por el cliente
-            String username = input.readLine();
-            String password = input.readLine();
+                System.err.println("Waiting for connection...");
+                SSLSocket socket = (SSLSocket) serverSocket.accept();
+                
+                // Incrementar el contador de clientes de forma sincronizada
+                incrementClientCount();
 
-            // Verificar usuario y contraseña
-            if (authenticateUser(username, password)) {
-                output.println("Authenticated");
-                output.flush();
+                BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
 
-                // Esperar mensaje del cliente y responder
-                String clientMsg = input.readLine();
-                System.out.println("Client message: " + clientMsg);
-                output.println("Message received: " + clientMsg);
-            } else {
-                output.println("Authentication failed");
+                // Leer usuario y contraseña enviados por el cliente
+                String username = input.readLine();
+                String password = input.readLine();
+
+                // Verificar usuario y contraseña
+                if (authenticateUser(username, password)) {
+                    output.println("Authenticated");
+                    output.flush();
+
+                    // Esperar mensaje del cliente y responder
+                    String clientMsg = input.readLine();
+                    System.out.println("Client message: " + clientMsg);
+                    output.println("Message received: " + clientMsg);
+                } else {
+                    output.println("Authentication failed");
+                }
+
+                output.close();
+                input.close();
+                socket.close();
             }
-
-            output.close();
-            input.close();
-            socket.close();
 
         } catch (IOException ioException) {
             ioException.printStackTrace();
+        }
+    }
+
+    private static void incrementClientCount() {
+        // Incrementar el contador de clientes de forma segura en entornos concurrentes
+        synchronized (BYODServer.class) {
+            clientCount++;
+            System.out.println("Número de clientes conectados: " + clientCount);
         }
     }
 
@@ -106,7 +124,6 @@ public class BYODServer {
         return input.replaceAll("[^a-zA-Z0-9_]", "");
     }
 
-
     private static boolean authenticateUser(String username, String password) {
         // Obtener el hash SHA3-512 de la contraseña proporcionada
         String hashedPassword = hashPassword(password);
@@ -128,6 +145,5 @@ public class BYODServer {
             throw new RuntimeException("Error generating password hash", e);
         }
     }
-
 
 }
